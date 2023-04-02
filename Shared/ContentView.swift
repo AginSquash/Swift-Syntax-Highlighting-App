@@ -47,10 +47,6 @@ class ViewModel: ObservableObject {
             return
         }
         
-        // Remove spaces at the beginning of each line
-        let lines = inputText.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
-        let inputText = lines.joined(separator: "\n")
-        
         switch outputType ?? self.outputType {
         case .attributedString:
             let highlighter = SyntaxHighlighter(format: AttributedStringOutputFormat(theme: .midnight(withFont: .init(size: 12))))
