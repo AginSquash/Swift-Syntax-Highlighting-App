@@ -28,6 +28,7 @@ class ViewModel: ObservableObject {
     @Published var inputText = ""
     @Published var highlightedText: NSAttributedString = .init(string: "")
     @Published var isShowingCopiedMessage = false
+    @Published var isJSONCompatible = false
     
     private var copyMessageTimer: Timer?
     
@@ -46,19 +47,43 @@ class ViewModel: ObservableObject {
             return
         }
         
+        // Remove spaces at the beginning of each line
+        let lines = inputText.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+        let inputText = lines.joined(separator: "\n")
+        
         switch outputType ?? self.outputType {
         case .attributedString:
             let highlighter = SyntaxHighlighter(format: AttributedStringOutputFormat(theme: .midnight(withFont: .init(size: 12))))
             highlightedText = highlighter.highlight(inputText)
         case .html:
             let highlighter = SyntaxHighlighter(format: HTMLOutputFormat())
-            let highlightedTextWithCodeTags = """
+            
+            var highlightedTextNoTags = highlighter.highlight(inputText)
+            var highlightedTextWithCodeTags = ""
+            
+            if isJSONCompatible {
+                let originalQuotation = """
+                "
+                """
+
+                let jsonQuotation = """
+                \\"
+                """
+                
+                highlightedTextNoTags = highlightedTextNoTags.replacingOccurrences(of: originalQuotation, with: jsonQuotation)
+                highlightedTextNoTags = highlightedTextNoTags.replacingOccurrences(of: "\n", with: "<br>")
+                highlightedTextWithCodeTags = """
+                <pre><br><code>\(highlightedTextNoTags)</code><br></pre>
+                """
+            } else {
+                highlightedTextWithCodeTags = """
                 <pre>
                 <code>
-                \(highlighter.highlight(inputText))
+                \(highlightedTextNoTags)
                 </code>
                 </pre>
                 """
+            }
             highlightedText = .init(string: highlightedTextWithCodeTags)
         }
     }
@@ -90,9 +115,8 @@ struct ContentView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                
-                Spacer()
-                    .layoutPriority(0)
+                                
+                Toggle("JSON Compatible", isOn: $viewModel.isJSONCompatible)
             }
             
             TextEditor(text: $viewModel.inputText)
